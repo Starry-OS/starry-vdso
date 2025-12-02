@@ -1,0 +1,12 @@
+[package]
+name = "starry-vdso"
+version = "0.1.1"
+edition = "2024"
+
+[dependencies]
+axerrno = { git = "https://github.com/Starry-OS/axerrno.git", rev = "f1e2bca" }
+axplat = "0.2"
+log = "0.4"
+xmas-elf = "0.9"
+rand_pcg = { version = "0.3", default-features = false }
+rand_core = { version = "0.6", default-features = false }
