@@ -2,10 +2,7 @@ use axplat::time::{
     NANOS_PER_SEC, current_ticks, monotonic_time_nanos, nanos_to_ticks, wall_time_nanos,
 };
 
-use crate::{
-    update::{clocks_calc_mult_shift, update_vdso_clock},
-    vdso::VdsoClock,
-};
+use crate::update::{VdsoClock, clocks_calc_mult_shift, update_vdso_clock};
 
 #[repr(C)]
 #[repr(align(4096))]

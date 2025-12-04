@@ -1,8 +1,69 @@
-use core::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 
 use axplat::time::NANOS_PER_SEC;
 
-use crate::{config::ClockMode, vdso::VdsoClock};
+use crate::config::ClockMode;
+
+/// Number of clock bases
+const VDSO_BASES: usize = 16;
+
+/// vDSO timestamp structure
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+pub struct VdsoTimestamp {
+    /// Seconds
+    pub sec: u64,
+    /// Nanoseconds
+    pub nsec: u64,
+}
+
+impl VdsoTimestamp {
+    /// Create a new zero timestamp
+    pub const fn new() -> Self {
+        Self { sec: 0, nsec: 0 }
+    }
+}
+
+#[repr(C)]
+#[derive(Default)]
+pub struct VdsoClock {
+    pub seq: AtomicU32,
+    pub clock_mode: i32,
+    pub cycle_last: AtomicU64,
+    pub mask: u64,
+    pub mult: u32,
+    pub shift: u32,
+    pub basetime: [VdsoTimestamp; VDSO_BASES],
+    pub _unused: u32,
+}
+
+impl VdsoClock {
+    /// Create a new VdsoClock with default values.
+    pub const fn new() -> Self {
+        Self {
+            seq: AtomicU32::new(0),
+            clock_mode: 1,
+            cycle_last: AtomicU64::new(0),
+            mask: u64::MAX,
+            mult: 0,
+            shift: 32,
+            basetime: [VdsoTimestamp::new(); VDSO_BASES],
+            _unused: 0,
+        }
+    }
+
+    pub fn write_seqcount_begin(&self) {
+        let seq = self.seq.load(Ordering::Relaxed);
+        self.seq.store(seq.wrapping_add(1), Ordering::Release);
+        core::sync::atomic::fence(Ordering::SeqCst);
+    }
+
+    pub fn write_seqcount_end(&self) {
+        core::sync::atomic::fence(Ordering::SeqCst);
+        let seq = self.seq.load(Ordering::Relaxed);
+        self.seq.store(seq.wrapping_add(1), Ordering::Release);
+    }
+}
 
 /// Update vDSO clock.
 pub fn update_vdso_clock(

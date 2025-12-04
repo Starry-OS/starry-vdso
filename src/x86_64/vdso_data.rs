@@ -3,10 +3,7 @@ use axplat::time::{
 };
 
 use super::config::ClockMode;
-use crate::{
-    update::{clocks_calc_mult_shift, update_vdso_clock},
-    vdso::VdsoClock,
-};
+use crate::update::{VdsoClock, clocks_calc_mult_shift, update_vdso_clock};
 
 #[repr(C)]
 #[repr(align(4096))]

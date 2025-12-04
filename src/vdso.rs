@@ -2,76 +2,12 @@
 extern crate alloc;
 extern crate log;
 use alloc::alloc::alloc_zeroed;
-use core::{
-    alloc::Layout,
-    sync::atomic::{AtomicU32, AtomicU64, Ordering},
-};
+use core::alloc::Layout;
 
 use axerrno::{AxError, AxResult};
 use axplat::{mem::virt_to_phys, time::monotonic_time_nanos};
 
 const PAGE_SIZE_4K: usize = 4096;
-
-/// Number of clock bases
-const VDSO_BASES: usize = 16;
-
-/// vDSO timestamp structure
-#[repr(C)]
-#[derive(Clone, Copy, Default)]
-pub struct VdsoTimestamp {
-    /// Seconds
-    pub sec: u64,
-    /// Nanoseconds
-    pub nsec: u64,
-}
-
-impl VdsoTimestamp {
-    /// Create a new zero timestamp
-    pub const fn new() -> Self {
-        Self { sec: 0, nsec: 0 }
-    }
-}
-
-#[repr(C)]
-#[derive(Default)]
-pub struct VdsoClock {
-    pub seq: AtomicU32,
-    pub clock_mode: i32,
-    pub cycle_last: AtomicU64,
-    pub mask: u64,
-    pub mult: u32,
-    pub shift: u32,
-    pub basetime: [VdsoTimestamp; VDSO_BASES],
-    pub _unused: u32,
-}
-
-impl VdsoClock {
-    /// Create a new VdsoClock with default values.
-    pub const fn new() -> Self {
-        Self {
-            seq: AtomicU32::new(0),
-            clock_mode: 1,
-            cycle_last: AtomicU64::new(0),
-            mask: u64::MAX,
-            mult: 0,
-            shift: 32,
-            basetime: [VdsoTimestamp::new(); VDSO_BASES],
-            _unused: 0,
-        }
-    }
-
-    pub(crate) fn write_seqcount_begin(&self) {
-        let seq = self.seq.load(Ordering::Relaxed);
-        self.seq.store(seq.wrapping_add(1), Ordering::Release);
-        core::sync::atomic::fence(Ordering::SeqCst);
-    }
-
-    pub(crate) fn write_seqcount_end(&self) {
-        core::sync::atomic::fence(Ordering::SeqCst);
-        let seq = self.seq.load(Ordering::Relaxed);
-        self.seq.store(seq.wrapping_add(1), Ordering::Release);
-    }
-}
 
 /// Global vDSO data instance
 #[unsafe(link_section = ".data")]
@@ -151,22 +87,6 @@ pub fn prepare_vdso_pages(vdso_kstart: usize, vdso_kend: usize) -> AxResult<Vdso
     }
 }
 
-#[cfg(target_arch = "aarch64")]
-pub fn enable_cntvct_access() {
-    log::info!("Enabling user-space access to timer counter registers...");
-    unsafe {
-        let mut cntkctl_el1: u64;
-        core::arch::asm!("mrs {}, CNTKCTL_EL1", out(reg) cntkctl_el1);
-
-        cntkctl_el1 |= 0x3;
-
-        core::arch::asm!("msr CNTKCTL_EL1, {}", in(reg) cntkctl_el1);
-        core::arch::asm!("isb");
-
-        log::info!("CNTKCTL_EL1 configured: {:#x}", cntkctl_el1);
-    }
-}
-
 /// Calculate ASLR-randomized vDSO user address
 pub fn calculate_vdso_aslr_addr(
     vdso_kstart: usize,
@@ -192,4 +112,20 @@ pub fn calculate_vdso_aslr_addr(
     };
 
     (base_addr, vdso_addr)
+}
+
+#[cfg(target_arch = "aarch64")]
+pub fn enable_cntvct_access() {
+    log::info!("Enabling user-space access to timer counter registers...");
+    unsafe {
+        let mut cntkctl_el1: u64;
+        core::arch::asm!("mrs {}, CNTKCTL_EL1", out(reg) cntkctl_el1);
+
+        cntkctl_el1 |= 0x3;
+
+        core::arch::asm!("msr CNTKCTL_EL1, {}", in(reg) cntkctl_el1);
+        core::arch::asm!("isb");
+
+        log::info!("CNTKCTL_EL1 configured: {:#x}", cntkctl_el1);
+    }
 }
