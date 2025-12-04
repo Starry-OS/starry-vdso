@@ -1,3 +1,13 @@
+use axplat::time::{
+    NANOS_PER_SEC, current_ticks, monotonic_time_nanos, nanos_to_ticks, wall_time_nanos,
+};
+
+use super::config::ClockMode;
+use crate::{
+    update::{clocks_calc_mult_shift, update_vdso_clock},
+    vdso::VdsoClock,
+};
+
 #[repr(C)]
 #[repr(align(4096))]
 pub struct VdsoData {
@@ -37,28 +47,28 @@ impl VdsoData {
         let mult_shift = clocks_calc_mult_shift(ticks_per_sec, NANOS_PER_SEC, 10);
         let cycle_now = current_ticks();
 
-        data.clock_page0.write_seqcount_begin();
-        data.clock_page0.clock_mode = ClockMode::Cntvct as i32;
-        data.clock_page0.mask = u64::MAX;
+        self.clock_page0.write_seqcount_begin();
+        self.clock_page0.clock_mode = ClockMode::Cntvct as i32;
+        self.clock_page0.mask = u64::MAX;
         update_vdso_clock(
-            &mut data.clock_page0,
+            &mut self.clock_page0,
             cycle_now,
             wall_ns,
             mono_ns,
             mult_shift,
         );
-        data.clock_page0.write_seqcount_end();
+        self.clock_page0.write_seqcount_end();
 
-        data.clock_page1.write_seqcount_begin();
-        data.clock_page1.clock_mode = ClockMode::Cntvct as i32;
-        data.clock_page1.mask = u64::MAX;
+        self.clock_page1.write_seqcount_begin();
+        self.clock_page1.clock_mode = ClockMode::Cntvct as i32;
+        self.clock_page1.mask = u64::MAX;
         update_vdso_clock(
-            &mut data.clock_page1,
+            &mut self.clock_page1,
             cycle_now,
             wall_ns,
             mono_ns,
             mult_shift,
         );
-        data.clock_page1.write_seqcount_end();
+        self.clock_page1.write_seqcount_end();
     }
 }

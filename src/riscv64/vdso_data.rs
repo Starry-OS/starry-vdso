@@ -1,3 +1,12 @@
+use axplat::time::{
+    NANOS_PER_SEC, current_ticks, monotonic_time_nanos, nanos_to_ticks, wall_time_nanos,
+};
+
+use crate::{
+    update::{clocks_calc_mult_shift, update_vdso_clock},
+    vdso::VdsoClock,
+};
+
 #[repr(C)]
 #[repr(align(4096))]
 #[derive(Default)]
@@ -26,7 +35,7 @@ impl VdsoData {
         let ticks_per_sec = nanos_to_ticks(NANOS_PER_SEC);
         let mult_shift = clocks_calc_mult_shift(ticks_per_sec, NANOS_PER_SEC, 10);
 
-        for clk in &mut data.clocks {
+        for clk in &mut self.clocks {
             clk.write_seqcount_begin();
             update_vdso_clock(clk, cycle_now, wall_ns, mono_ns, mult_shift);
             clk.write_seqcount_end();

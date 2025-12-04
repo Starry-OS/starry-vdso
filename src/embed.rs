@@ -23,7 +23,7 @@ cfg_if::cfg_if! {
     if #[cfg(target_arch = "x86_64")] {
         global_asm!(include_vdso!("x86_64"));
     } else if #[cfg(target_arch = "riscv64")] {
-        global_asm!(include_vdso!("riscv"));
+        global_asm!(include_vdso!("riscv64"));
     } else if #[cfg(target_arch = "aarch64")]{
         global_asm!(include_vdso!("aarch64"));
     } else if #[cfg(any(target_arch = "loongarch64"))] {
