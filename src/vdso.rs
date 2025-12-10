@@ -17,8 +17,13 @@ pub static mut VDSO_DATA: crate::vdso_data::VdsoData = crate::vdso_data::VdsoDat
 pub fn init_vdso_data() {
     unsafe {
         let data_ptr = core::ptr::addr_of_mut!(VDSO_DATA);
-        (*data_ptr).update();
+        (*data_ptr).time_update();
         log::info!("vDSO data initialized at {:#x}", data_ptr as usize);
+        #[cfg(target_arch = "aarch64")]
+        {
+            enable_cntvct_access();
+            log::info!("vDSO CNTVCT access enabled");
+        }
     }
 }
 
@@ -26,7 +31,7 @@ pub fn init_vdso_data() {
 pub fn update_vdso_data() {
     unsafe {
         let data_ptr = core::ptr::addr_of_mut!(VDSO_DATA);
-        (*data_ptr).update();
+        (*data_ptr).time_update();
     }
 }
 

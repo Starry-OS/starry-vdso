@@ -1,11 +1,8 @@
-use core::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use core::sync::atomic::Ordering;
 
 use axplat::time::NANOS_PER_SEC;
 
-use crate::config::ClockMode;
-
-/// Number of clock bases
-const VDSO_BASES: usize = 16;
+use crate::{config::ClockMode, vdso_time_data::VdsoClock};
 
 /// vDSO timestamp structure
 #[repr(C)]
@@ -24,47 +21,6 @@ impl VdsoTimestamp {
     }
 }
 
-#[repr(C)]
-#[derive(Default)]
-pub struct VdsoClock {
-    pub seq: AtomicU32,
-    pub clock_mode: i32,
-    pub cycle_last: AtomicU64,
-    pub mask: u64,
-    pub mult: u32,
-    pub shift: u32,
-    pub basetime: [VdsoTimestamp; VDSO_BASES],
-    pub _unused: u32,
-}
-
-impl VdsoClock {
-    /// Create a new VdsoClock with default values.
-    pub const fn new() -> Self {
-        Self {
-            seq: AtomicU32::new(0),
-            clock_mode: 1,
-            cycle_last: AtomicU64::new(0),
-            mask: u64::MAX,
-            mult: 0,
-            shift: 32,
-            basetime: [VdsoTimestamp::new(); VDSO_BASES],
-            _unused: 0,
-        }
-    }
-
-    pub fn write_seqcount_begin(&self) {
-        let seq = self.seq.load(Ordering::Relaxed);
-        self.seq.store(seq.wrapping_add(1), Ordering::Release);
-        core::sync::atomic::fence(Ordering::SeqCst);
-    }
-
-    pub fn write_seqcount_end(&self) {
-        core::sync::atomic::fence(Ordering::SeqCst);
-        let seq = self.seq.load(Ordering::Relaxed);
-        self.seq.store(seq.wrapping_add(1), Ordering::Release);
-    }
-}
-
 /// Update vDSO clock.
 pub fn update_vdso_clock(
     clk: &mut VdsoClock,
@@ -74,10 +30,10 @@ pub fn update_vdso_clock(
     mult_shift: (u32, u32),
 ) {
     let prev_cycle = clk.cycle_last.load(Ordering::Relaxed);
-    let prev_basetime_ns = clk.basetime[1]
+    let prev_basetime_ns = clk.time_data[1]
         .sec
         .wrapping_mul(NANOS_PER_SEC)
-        .wrapping_add(clk.basetime[1].nsec);
+        .wrapping_add(clk.time_data[1].nsec);
 
     // Check if this is a counter-based clock mode (non-None)
     let is_counter_mode = clk.clock_mode != (ClockMode::None as i32);
@@ -89,16 +45,16 @@ pub fn update_vdso_clock(
             let (mult, shift) = mult_shift;
             clk.mult = mult;
             clk.shift = shift;
-            clk.basetime[1].sec = mono_ns / NANOS_PER_SEC;
-            clk.basetime[1].nsec = (mono_ns % NANOS_PER_SEC) << shift;
+            clk.time_data[1].sec = mono_ns / NANOS_PER_SEC;
+            clk.time_data[1].nsec = (mono_ns % NANOS_PER_SEC) << shift;
             clk.cycle_last.store(cycle_now, Ordering::Relaxed);
         } else {
             let (mult, shift) = mult_shift;
             if !(mult == u32::MAX && shift == 0) {
                 clk.mult = mult;
                 clk.shift = shift;
-                clk.basetime[1].sec = mono_ns / NANOS_PER_SEC;
-                clk.basetime[1].nsec = (mono_ns % NANOS_PER_SEC) << shift;
+                clk.time_data[1].sec = mono_ns / NANOS_PER_SEC;
+                clk.time_data[1].nsec = (mono_ns % NANOS_PER_SEC) << shift;
                 clk.cycle_last.store(cycle_now, Ordering::Relaxed);
             } else {
                 let delta_cycles = (cycle_now.wrapping_sub(prev_cycle)) & clk.mask;
@@ -107,8 +63,8 @@ pub fn update_vdso_clock(
                     let (mult, shift) = clocks_calc_mult_shift(delta_cycles, delta_ns, 1);
                     clk.mult = mult;
                     clk.shift = shift;
-                    clk.basetime[1].sec = mono_ns / NANOS_PER_SEC;
-                    clk.basetime[1].nsec = (mono_ns % NANOS_PER_SEC) << shift;
+                    clk.time_data[1].sec = mono_ns / NANOS_PER_SEC;
+                    clk.time_data[1].nsec = (mono_ns % NANOS_PER_SEC) << shift;
                     clk.cycle_last.store(cycle_now, Ordering::Relaxed);
                 }
             }
@@ -116,17 +72,17 @@ pub fn update_vdso_clock(
     } else {
         // ClockMode::None - No cycle->ns conversion; store direct monotonic ns.
         clk.mult = 0;
-        clk.basetime[1].sec = mono_ns / NANOS_PER_SEC;
-        clk.basetime[1].nsec = mono_ns % NANOS_PER_SEC;
+        clk.time_data[1].sec = mono_ns / NANOS_PER_SEC;
+        clk.time_data[1].nsec = mono_ns % NANOS_PER_SEC;
         clk.cycle_last.store(0, Ordering::Relaxed);
     }
 
     // Update realtime and boottime entries.
     let shift = clk.shift;
-    clk.basetime[0].sec = wall_ns / NANOS_PER_SEC;
-    clk.basetime[0].nsec = (wall_ns % NANOS_PER_SEC) << shift;
-    clk.basetime[7].sec = clk.basetime[1].sec;
-    clk.basetime[7].nsec = clk.basetime[1].nsec;
+    clk.time_data[0].sec = wall_ns / NANOS_PER_SEC;
+    clk.time_data[0].nsec = (wall_ns % NANOS_PER_SEC) << shift;
+    clk.time_data[7].sec = clk.time_data[1].sec;
+    clk.time_data[7].nsec = clk.time_data[1].nsec;
 
     if clk.seq.load(Ordering::Relaxed) < 10 {
         let cycle_val = clk.cycle_last.load(Ordering::Relaxed);

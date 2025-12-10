@@ -3,6 +3,7 @@ pub mod embed;
 pub mod guard;
 mod update;
 pub mod vdso;
+mod vdso_time_data;
 
 cfg_if::cfg_if! {
     if #[cfg(target_arch = "x86_64")] {
