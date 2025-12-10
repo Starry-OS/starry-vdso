@@ -1,7 +1,14 @@
 use crate::vdso_time_data::VdsoTimeData;
 
+#[repr(C)]
 pub struct VdsoData {
     pub time_data: VdsoTimeData,
+}
+
+impl Default for VdsoData {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl VdsoData {
