@@ -1,7 +1,6 @@
 #![no_std]
 pub mod embed;
 pub mod guard;
-mod update;
 pub mod vdso;
 mod vdso_time_data;
 
