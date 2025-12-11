@@ -6,7 +6,7 @@ use axplat::time::{
 
 const VDSO_BASES: usize = 12;
 
-use crate::{config::ClockMode};
+use crate::config::ClockMode;
 
 /// vDSO timestamp structure
 #[repr(C)]
