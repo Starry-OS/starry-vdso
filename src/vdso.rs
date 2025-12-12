@@ -21,7 +21,7 @@ pub fn init_vdso_data() {
         log::info!("vDSO data initialized at {:#x}", data_ptr as usize);
         #[cfg(target_arch = "aarch64")]
         {
-            enable_cntvct_access();
+            crate::vdso_data::enable_cntvct_access();
             log::info!("vDSO CNTVCT access enabled");
         }
     }
@@ -117,20 +117,4 @@ pub fn calculate_vdso_aslr_addr(
     };
 
     (base_addr, vdso_addr)
-}
-
-#[cfg(target_arch = "aarch64")]
-pub fn enable_cntvct_access() {
-    log::info!("Enabling user-space access to timer counter registers...");
-    unsafe {
-        let mut cntkctl_el1: u64;
-        core::arch::asm!("mrs {}, CNTKCTL_EL1", out(reg) cntkctl_el1);
-
-        cntkctl_el1 |= 0x3;
-
-        core::arch::asm!("msr CNTKCTL_EL1, {}", in(reg) cntkctl_el1);
-        core::arch::asm!("isb");
-
-        log::info!("CNTKCTL_EL1 configured: {:#x}", cntkctl_el1);
-    }
 }
