@@ -1,7 +1,8 @@
-use crate::config::ClockMode;
-use crate::vdso_time_data::VdsoTimeData;
-use crate::x86_64::pvclock_data::PvClockTimeInfo;
-use crate::x86_64::config::PVCLOCK_MAX_CPUS;
+use crate::{
+    config::ClockMode,
+    vdso_time_data::VdsoTimeData,
+    x86_64::{config::PVCLOCK_MAX_CPUS, pvclock_data::PvClockTimeInfo},
+};
 
 #[repr(C)]
 pub struct VdsoData {
@@ -52,4 +53,3 @@ fn register_pvclock(cpu_id: usize) {
     crate::x86_64::pvclock_data::register_kvm_clock(paddr);
     log::info!("PVCLOCK registered for cpu {} at {:#x}", cpu_id, paddr);
 }
-
