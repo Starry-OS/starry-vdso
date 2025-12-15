@@ -24,6 +24,10 @@ pub fn init_vdso_data() {
             crate::vdso_data::enable_cntvct_access();
             log::info!("vDSO CNTVCT access enabled");
         }
+        #[cfg(target_arch = "x86_64")]
+        {
+            (*data_ptr).enable_pvclock();
+        }
     }
 }
 
