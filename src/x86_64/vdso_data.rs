@@ -43,13 +43,11 @@ impl VdsoData {
 
 fn detect_kvm_clock() -> bool {
     let (max_leaf, ebx, ecx, edx) = cpuid(0x40000000);
-    let sig = [
-        ebx.to_le_bytes(),
-        ecx.to_le_bytes(),
-        edx.to_le_bytes(),
-    ];
+    let sig = [ebx.to_le_bytes(), ecx.to_le_bytes(), edx.to_le_bytes()];
     // Safe because we constructed it from bytes
-    let sig_str = unsafe { core::str::from_utf8_unchecked(core::slice::from_raw_parts(sig.as_ptr() as *const u8, 12)) };
+    let sig_str = unsafe {
+        core::str::from_utf8_unchecked(core::slice::from_raw_parts(sig.as_ptr() as *const u8, 12))
+    };
     log::info!("Hypervisor Signature: {}", sig_str);
 
     if max_leaf < 0x40000001 {
@@ -57,7 +55,7 @@ fn detect_kvm_clock() -> bool {
         return false;
     }
 
-    let (features, _, _, _) = cpuid(0x40000001);
+    let (features, ..) = cpuid(0x40000001);
     log::info!("KVM Features (EAX): {:#x}", features);
 
     // KVM_FEATURE_CLOCKSOURCE2 is bit 3
@@ -65,7 +63,11 @@ fn detect_kvm_clock() -> bool {
     // KVM_FEATURE_CLOCKSOURCE is bit 0 (older)
     let has_clocksource = (features & (1 << 0)) != 0;
 
-    log::info!("KVM Clock Source: old={}, new={}", has_clocksource, has_clocksource2);
+    log::info!(
+        "KVM Clock Source: old={}, new={}",
+        has_clocksource,
+        has_clocksource2
+    );
 
     has_clocksource2 || has_clocksource
 }
