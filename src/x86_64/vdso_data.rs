@@ -102,7 +102,7 @@ impl VdsoTimeData {
 }
 
 fn register_pvclock(cpu_id: usize) {
-    let base = crate::vdso::vdso_data_paddr() as u64 + 1 * 4096;
+    let base = crate::vdso::vdso_data_paddr() as u64 + 4096;
     let offset = cpu_id * core::mem::size_of::<crate::x86_64::pvclock_data::PvClockTimeInfo>();
     let paddr = base + offset as u64;
     crate::x86_64::pvclock_data::register_kvm_clock(paddr);
