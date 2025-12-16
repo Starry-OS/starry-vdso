@@ -29,6 +29,10 @@ pub fn init_vdso_data() {
         {
             (*data_ptr).enable_pvclock();
         }
+        #[cfg(target_arch = "x86_64")]
+        {
+            (*data_ptr).enable_pvclock();
+        }
     }
 }
 
