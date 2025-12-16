@@ -48,7 +48,7 @@ fn detect_kvm_clock() -> bool {
     let sig_str = unsafe {
         core::str::from_utf8_unchecked(core::slice::from_raw_parts(sig.as_ptr() as *const u8, 12))
     };
-    log::info!("Hypervisor Signature: {}", sig_str);
+    log::info!("Hypervisor Signature: {sig_str}");
 
     if max_leaf < 0x40000001 {
         log::warn!("CPUID 0x40000001 not supported");
@@ -56,18 +56,14 @@ fn detect_kvm_clock() -> bool {
     }
 
     let (features, ..) = cpuid(0x40000001);
-    log::info!("KVM Features (EAX): {:#x}", features);
+    log::info!("KVM Features (EAX): {features:#x}");
 
     // KVM_FEATURE_CLOCKSOURCE2 is bit 3
     let has_clocksource2 = (features & (1 << 3)) != 0;
     // KVM_FEATURE_CLOCKSOURCE is bit 0 (older)
     let has_clocksource = (features & (1 << 0)) != 0;
 
-    log::info!(
-        "KVM Clock Source: old={}, new={}",
-        has_clocksource,
-        has_clocksource2
-    );
+    log::info!("KVM Clock Source: old={has_clocksource}, new={has_clocksource2}");
 
     has_clocksource2 || has_clocksource
 }
@@ -106,5 +102,5 @@ fn register_pvclock(cpu_id: usize) {
     let offset = cpu_id * core::mem::size_of::<crate::x86_64::pvclock_data::PvClockTimeInfo>();
     let paddr = base + offset as u64;
     crate::x86_64::pvclock_data::register_kvm_clock(paddr);
-    log::info!("PVCLOCK registered for cpu {} at {:#x}", cpu_id, paddr);
+    log::info!("PVCLOCK registered for cpu {cpu_id} at {paddr:#x}");
 }

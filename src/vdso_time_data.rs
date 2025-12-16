@@ -39,6 +39,12 @@ pub struct VdsoClock {
     pub _unused: u32,
 }
 
+impl Default for VdsoClock {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl VdsoClock {
     /// Create a new VdsoClock with default values.
     pub const fn new() -> Self {
