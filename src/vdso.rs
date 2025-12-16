@@ -129,7 +129,12 @@ pub fn load_vdso_data<F1, F2, F3>(auxv: &mut Vec<AuxEntry>, f1: F1, f2: F2, f3: 
 where
     F1: FnOnce(usize, axplat::mem::PhysAddr, usize) -> AxResult<()>,
     F2: FnOnce(usize, usize) -> AxResult<()>,
-    F3: FnMut(usize, axplat::mem::PhysAddr, usize, &xmas_elf::program::ProgramHeader64) -> AxResult<()>,
+    F3: FnMut(
+        usize,
+        axplat::mem::PhysAddr,
+        usize,
+        &xmas_elf::program::ProgramHeader64,
+    ) -> AxResult<()>,
 {
     unsafe extern "C" {
         static vdso_start: u8;
@@ -191,12 +196,10 @@ where
     Ok(())
 }
 
-fn map_vvar_and_push_aux<F>(
-    auxv: &mut Vec<AuxEntry>,
-    vdso_user_addr: usize,
-    f: F,
-) -> AxResult<()>
-where F: FnOnce(usize, usize) -> AxResult<()> {
+fn map_vvar_and_push_aux<F>(auxv: &mut Vec<AuxEntry>, vdso_user_addr: usize, f: F) -> AxResult<()>
+where
+    F: FnOnce(usize, usize) -> AxResult<()>,
+{
     use crate::config::VVAR_PAGES;
     let vvar_user_addr = vdso_user_addr - VVAR_PAGES * PAGE_SIZE_4K;
     let vvar_paddr = vdso_data_paddr();
@@ -223,7 +226,14 @@ fn map_vdso_segments<F>(
     vdso_page_offset: usize,
     mut f: F,
 ) -> AxResult<()>
-where F: FnMut(usize, axplat::mem::PhysAddr, usize, &xmas_elf::program::ProgramHeader64) -> AxResult<()> {
+where
+    F: FnMut(
+        usize,
+        axplat::mem::PhysAddr,
+        usize,
+        &xmas_elf::program::ProgramHeader64,
+    ) -> AxResult<()>,
+{
     info!("vDSO ELF parsed successfully, mapping segments");
     for ph in headers
         .ph
