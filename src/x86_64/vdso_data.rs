@@ -106,5 +106,5 @@ fn register_pvclock(cpu_id: usize) {
     let offset = cpu_id * core::mem::size_of::<crate::x86_64::pvclock_data::PvClockTimeInfo>();
     let paddr = base + offset as u64;
     crate::x86_64::pvclock_data::register_kvm_clock(paddr);
-    log::info!("PVCLOCK registered for cpu {} at {:#x}", cpu_id, paddr);
+    log::info!("PVCLOCK registered for cpu {cpu_id} at {paddr:#x}");
 }

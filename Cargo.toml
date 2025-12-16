@@ -4,10 +4,12 @@ version = "0.1.1"
 edition = "2024"
 
 [dependencies]
-axerrno = { git = "https://github.com/Starry-OS/axerrno.git", rev = "f1e2bca" }
+axerrno = "0.2"
 axplat = "0.2"
 log = "0.4"
 xmas-elf = "0.9"
 rand_pcg = { version = "0.3", default-features = false }
 rand_core = { version = "0.6", default-features = false }
+kernel-elf-parser = { git = "https://github.com/Starry-OS/kernel_elf_parser.git", rev = "fdcce74" }
+memory_addr = "0.4"
 cfg-if = "1.0"
