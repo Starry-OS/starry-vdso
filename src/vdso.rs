@@ -20,14 +20,11 @@ pub fn init_vdso_data() {
         let data_ptr = core::ptr::addr_of_mut!(VDSO_DATA);
         (*data_ptr).time_update();
         info!("vDSO data initialized at {:#x}", data_ptr as usize);
+
         #[cfg(target_arch = "aarch64")]
         {
             crate::vdso_data::enable_cntvct_access();
             info!("vDSO CNTVCT access enabled");
-        }
-        #[cfg(target_arch = "x86_64")]
-        {
-            (*data_ptr).enable_pvclock();
         }
         #[cfg(target_arch = "x86_64")]
         {
@@ -256,4 +253,43 @@ where
         f(seg_user_start, seg_paddr, seg_align_size, ph)?;
     }
     Ok(())
+}
+
+pub fn get_trampoline_addr(auxv: &[AuxEntry]) -> Option<usize> {
+    let vdso_base = auxv
+        .iter()
+        .find(|entry| entry.get_type() == AuxType::SYSINFO_EHDR)
+        .map(|entry| entry.value());
+
+    if vdso_base.is_none() {
+        warn!("get_trampoline_addr: AT_SYSINFO_EHDR not found in auxv");
+        return None;
+    }
+    let vdso_base = vdso_base.unwrap();
+    info!("get_trampoline_addr: found vdso_base={:#x}", vdso_base);
+
+    let mut sigreturn_offset: Option<usize> = None;
+
+    #[cfg(not(target_arch = "x86_64"))]
+    unsafe {
+        unsafe extern "C" {
+            static vdso_start: u8;
+            static vdso_end: u8;
+        }
+        let (start, end) = (
+            &vdso_start as *const u8 as usize,
+            &vdso_end as *const u8 as usize,
+        );
+        if end > start {
+            sigreturn_offset = Some(crate::config::SIGRETURN_SYM_OFFSET);
+        }
+    }
+
+    let sigreturn_offset = sigreturn_offset.unwrap_or_default();
+    let addr = vdso_base + sigreturn_offset;
+    info!(
+        "get_trampoline_addr: vdso_base={:#x}, offset={:#x}, result={:#x}",
+        vdso_base, sigreturn_offset, addr
+    );
+    Some(addr)
 }
