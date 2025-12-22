@@ -255,6 +255,7 @@ where
     Ok(())
 }
 
+#[cfg(not(target_arch = "x86_64"))]
 pub fn get_trampoline_addr(auxv: &[AuxEntry]) -> Option<usize> {
     let vdso_base = auxv
         .iter()
@@ -270,7 +271,6 @@ pub fn get_trampoline_addr(auxv: &[AuxEntry]) -> Option<usize> {
 
     let mut sigreturn_offset: Option<usize> = None;
 
-    #[cfg(not(target_arch = "x86_64"))]
     unsafe {
         unsafe extern "C" {
             static vdso_start: u8;
@@ -292,4 +292,9 @@ pub fn get_trampoline_addr(auxv: &[AuxEntry]) -> Option<usize> {
         vdso_base, sigreturn_offset, addr
     );
     Some(addr)
+}
+
+#[cfg(target_arch = "x86_64")]
+pub fn get_trampoline_addr(_auxv: &[AuxEntry]) -> Option<usize> {
+    None
 }
